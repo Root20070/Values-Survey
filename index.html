@@ -37,51 +37,98 @@
   <p><button id="submit-btn" disabled>Submit response</button></p>
 
   <script>
-    const LABELS = {
-      A: "Individual Autonomy",
-      B: "Knowledge Integrity",
-      C: "Equal Opportunity"
-    };
+  const LABELS = {
+    A: "Individual Autonomy",
+    B: "Knowledge Integrity",
+    C: "Equal Opportunity"
+  };
 
-    const state = { today: null, y2075: null };
+  // Make a dense grid of (a,b,c) points with a+b+c=1 so clicks always hit a point
+  function generateGrid(step = 0.02) {
+    const a = [], b = [], c = [];
+    for (let i = 0; i <= 1/step; i++) {
+      const ai = i * step;
+      for (let j = 0; j <= (1 - ai) / step; j++) {
+        const bj = j * step;
+        const ck = 1 - ai - bj;
+        if (ck >= -1e-9) { // allow tiny float error
+          a.push(ai);
+          b.push(bj);
+          c.push(ck);
+        }
+      }
+    }
+    return { a, b, c };
+  }
 
-    function makeFigure() {
-      return {
-        data: [{ type: "scatterternary", mode: "markers", a: [], b: [], c: [], marker: { size: 12 } }],
-        layout: {
-          ternary: {
-            aaxis: { title: LABELS.A, min: 0 },
-            baxis: { title: LABELS.B, min: 0 },
-            caxis: { title: LABELS.C, min: 0 },
-            sum: 1
-          },
-          margin: { l: 40, r: 40, b: 40, t: 20 }
+  // Build a ternary figure with a hidden grid trace + a visible response trace
+  function makeFigure() {
+    const grid = generateGrid(0.02); // smaller = denser grid, more accurate clicking
+    return {
+      data: [
+        {
+          // Invisible grid points to catch clicks anywhere
+          type: "scatterternary",
+          mode: "markers",
+          a: grid.a, b: grid.b, c: grid.c,
+          marker: { size: 6, opacity: 0 }, // invisible but clickable
+          hoverinfo: "skip",
+          name: "click-grid"
         },
-        config: { responsive: true, displayModeBar: false }
-      };
-    }
+        {
+          // Your one visible response point (starts empty)
+          type: "scatterternary",
+          mode: "markers",
+          a: [], b: [], c: [],
+          marker: { size: 12 },
+          name: "response"
+        }
+      ],
+      layout: {
+        ternary: {
+          aaxis: { title: LABELS.A, min: 0 },
+          baxis: { title: LABELS.B, min: 0 },
+          caxis: { title: LABELS.C, min: 0 },
+          sum: 1
+        },
+        dragmode: "pan",   // stop the box-select zoom triangle
+        hovermode: "closest",
+        margin: { l: 40, r: 40, b: 40, t: 20 }
+      },
+      config: { responsive: true, displayModeBar: false }
+    };
+  }
 
-    function mount(id, key) {
-      const el = document.getElementById(id);
-      const fig = makeFigure();
-      Plotly.newPlot(el, fig.data, fig.layout, fig.config);
-      el.on('plotly_click', (ev) => {
-        const pt = ev.points?.[0];
-        if (!pt) return;
-        const a = pt.a, b = pt.b, c = pt.c;
-        Plotly.restyle(el, { a: [[a]], b: [[b]], c: [[c]] });
-        state[key] = { a, b, c };
-        document.getElementById('submit-btn').disabled = !(state.today && state.y2075);
-      });
-    }
+  const state = { today: null, y2075: null };
 
-    mount("plot-today", "today");
-    mount("plot-2075", "y2075");
+  function mount(id, key) {
+    const el = document.getElementById(id);
+    const fig = makeFigure();
+    Plotly.newPlot(el, fig.data, fig.layout, fig.config);
 
-    document.getElementById('submit-btn').addEventListener('click', () => {
-      console.log("SUBMIT", state);
-      alert("Response recorded (test mode) — check console for data!");
+    // Handle clicks anywhere (they’ll hit the hidden grid trace)
+    el.on("plotly_click", (ev) => {
+      const pt = ev.points?.[0];
+      if (!pt || pt.a == null || pt.b == null || pt.c == null) return;
+      const a = pt.a, b = pt.b, c = pt.c;
+
+      // Update the visible response trace (trace index 1)
+      Plotly.restyle(el, { a: [[a]], b: [[b]], c: [[c]] }, [1]);
+
+      state[key] = { a, b, c };
+      document.getElementById("submit-btn").disabled = !(state.today && state.y2075);
     });
-  </script>
+  }
+
+  // Mount both plots
+  mount("plot-today", "today");
+  mount("plot-2075", "y2075");
+
+  // Submit (still test mode; we’ll wire storage next)
+  document.getElementById("submit-btn").addEventListener("click", () => {
+    console.log("SUBMIT", state);
+    alert("Response recorded (test mode) — check console for data!");
+  });
+</script>
 </body>
 </html>
