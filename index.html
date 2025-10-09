@@ -4,22 +4,30 @@
   <meta charset="utf-8" />
   <title>Values Survey — Year 2075</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Plotly (must load successfully) -->
+  <!-- Plotly -->
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <style>
     body { font-family: system-ui, Arial, sans-serif; margin: 24px; line-height: 1.5; }
     .grid { display: grid; gap: 24px; grid-template-columns: 1fr; max-width: 1100px; }
     @media (min-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } }
-    .card { border: 1px solid #ccc; border-radius: 12px; padding: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); }
     button { padding: 10px 16px; border-radius: 10px; background: #222; color: white; border: none; cursor: pointer; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
-    #ver { font-size: 0.9rem; color:#555; margin-bottom: 16px; }
+    .muted { color:#555; font-size: 0.95rem; }
+    .fallback { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top: 8px; }
+    .fallback input { width: 70px; padding: 6px 8px; border:1px solid #ddd; border-radius:8px; }
+    #plot-today, #plot-2075 { touch-action: manipulation; } /* improves tapping on mobile */
+    #ver { font-size: 0.9rem; color:#555; margin: 6px 0 16px; }
   </style>
 </head>
 <body>
   <h1>Values Survey — Year 2075</h1>
   <div id="ver">Checking Plotly…</div>
-  <p>Please click once inside each triangle (Today & 2075). Submit enables after both have a dot.</p>
+
+  <p class="muted">
+    Place <strong>one dot</strong> on each triangle: <em>Today</em> and <em>2075</em>.
+    If tapping is tricky on your device, use the small % inputs below each plot and press <em>Set point</em>.
+  </p>
   <ul>
     <li><strong>Individual Autonomy</strong> — freedom for learners to choose what and how they learn.</li>
     <li><strong>Knowledge Integrity</strong> — ensuring educational content remains accurate and unbiased.</li>
@@ -30,17 +38,33 @@
     <div class="card">
       <h2>Today</h2>
       <div id="plot-today" style="height:520px;"></div>
+      <div class="fallback">
+        <label>A (%): <input type="number" id="todayA" min="0" max="100" value="34"></label>
+        <label>B (%): <input type="number" id="todayB" min="0" max="100" value="33"></label>
+        <label>C (%): <input type="number" id="todayC" min="0" max="100" value="33"></label>
+        <button type="button" onclick="setPointFromInputs('today')">Set point</button>
+      </div>
     </div>
+
     <div class="card">
       <h2>2075</h2>
       <div id="plot-2075" style="height:520px;"></div>
+      <div class="fallback">
+        <label>A (%): <input type="number" id="y2075A" min="0" max="100" value="34"></label>
+        <label>B (%): <input type="number" id="y2075B" min="0" max="100" value="33"></label>
+        <label>C (%): <input type="number" id="y2075C" min="0" max="100" value="33"></label>
+        <button type="button" onclick="setPointFromInputs('y2075')">Set point</button>
+      </div>
     </div>
   </div>
 
-  <p><button id="submit-btn" disabled>Submit response</button></p>
+  <p style="margin-top:20px;">
+    <button id="submit-btn" disabled>Submit response</button>
+    <span id="status" class="muted" style="margin-left:10px;"></span>
+  </p>
 
   <script>
-    // Show Plotly version (helps detect loading issues)
+    // Show Plotly version (helps confirm it loaded)
     try {
       document.getElementById('ver').textContent = 'Plotly loaded: v' + (window.Plotly?.version || 'NOT LOADED');
       console.log('Plotly version:', window.Plotly?.version);
@@ -52,8 +76,8 @@
       C: "Equal Opportunity"
     };
 
-    // Dense but light clickable grid so clicks always hit a point
-    function generateGrid(step = 0.05) { // 0.05 = lighter; change to 0.02 for finer clicks
+    // Dense clickable grid so taps/clicks always hit a point
+    function generateGrid(step = 0.04) {
       const a = [], b = [], c = [];
       for (let i = 0; i <= 1/step; i++) {
         const ai = +(i * step).toFixed(6);
@@ -67,18 +91,20 @@
     }
 
     function makeFigure() {
-      const grid = generateGrid(0.05);
+      const grid = generateGrid(0.04); // smaller -> denser grid if needed
       return {
         data: [
           {
+            // Faint but tappable grid markers (touch devices need >0 opacity)
             type: "scatterternary",
             mode: "markers",
             a: grid.a, b: grid.b, c: grid.c,
-            marker: { size: 6, opacity: 0 }, // invisible but clickable
+            marker: { size: 16, opacity: 0.005 },
             hoverinfo: "skip",
             name: "click-grid"
           },
           {
+            // Visible single response point
             type: "scatterternary",
             mode: "markers",
             a: [], b: [], c: [],
@@ -93,7 +119,8 @@
             caxis: { title: LABELS.C, min: 0 },
             sum: 1
           },
-          dragmode: "pan",    // avoid draw-select mode
+          dragmode: "pan",
+          clickmode: "event+select",
           hovermode: "closest",
           margin: { l: 40, r: 40, b: 40, t: 20 }
         },
@@ -103,19 +130,22 @@
 
     const state = { today: null, y2075: null };
 
+    function maybeEnableSubmit() {
+      document.getElementById('submit-btn').disabled = !(state.today && state.y2075);
+    }
+
     function mount(id, key) {
       const el = document.getElementById(id);
       const fig = makeFigure();
       Plotly.newPlot(el, fig.data, fig.layout, fig.config).then(() => {
-        // Attach after render to avoid race conditions
         el.on('plotly_click', (ev) => {
           const pt = ev.points?.[0];
           if (!pt || pt.a == null || pt.b == null || pt.c == null) return;
           const a = pt.a, b = pt.b, c = pt.c;
-          Plotly.restyle(el, { a: [[a]], b: [[b]], c: [[c]] }, [1]); // update visible point
+          Plotly.restyle(el, { a: [[a]], b: [[b]], c: [[c]] }, [1]); // update response trace
           state[key] = { a, b, c };
-          document.getElementById('submit-btn').disabled = !(state.today && state.y2075);
           console.log(`Selected ${key}:`, state[key]);
+          maybeEnableSubmit();
         });
       }).catch(err => {
         console.error('Plot creation failed for', id, err);
@@ -123,7 +153,23 @@
       });
     }
 
-    // Build both plots
+    // Fallback: set point from % inputs (normalised to sum=1)
+    function setPointFromInputs(which) {
+      const ids = which === 'today' ? ['todayA','todayB','todayC'] : ['y2075A','y2075B','y2075C'];
+      const vals = ids.map(id => Math.max(0, Math.min(100, +document.getElementById(id).value || 0)));
+      const sum = vals[0] + vals[1] + vals[2];
+      if (!sum) return;
+      const a = vals[0]/sum, b = vals[1]/sum, c = vals[2]/sum;
+
+      const el = document.getElementById(which === 'today' ? 'plot-today' : 'plot-2075');
+      Plotly.restyle(el, { a: [[a]], b: [[b]], c: [[c]] }, [1]);
+      state[which] = { a, b, c };
+      console.log(`Set via inputs ${which}:`, state[which]);
+      maybeEnableSubmit();
+    }
+    window.setPointFromInputs = setPointFromInputs; // expose for button onclick
+
+    // Mount both plots
     if (!window.Plotly) {
       alert('Plotly did not load. Check your network or the CDN URL.');
     } else {
@@ -131,10 +177,17 @@
       mount('plot-2075', 'y2075');
     }
 
-    // Test-mode submit
-    document.getElementById('submit-btn').addEventListener('click', () => {
-      console.log('SUBMIT payload:', state);
-      alert('Response recorded (test mode) — open the browser console to see the data.');
+    // Submit (test mode). TODO: replace with Google Sheets or Supabase POST.
+    document.getElementById('submit-btn').addEventListener('click', async () => {
+      const payload = {
+        labels: LABELS,
+        today: state.today,
+        y2075: state.y2075,
+        ts: new Date().toISOString()
+      };
+      console.log('SUBMIT payload:', payload);
+      document.getElementById('status').textContent = 'Thanks — response recorded (test mode).';
+      // Example: to wire storage later, do a fetch() POST to your endpoint here.
     });
   </script>
 </body>
