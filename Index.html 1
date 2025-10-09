@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Values Survey — Digital Society 2075</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; line-height: 1.5; }
+    .grid { display: grid; gap: 24px; grid-template-columns: 1fr; max-width: 1100px; }
+    @media (min-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } }
+    .card { border: 1px solid #ccc; border-radius: 12px; padding: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    button { padding: 10px 16px; border-radius: 10px; background: #222; color: white; border: none; cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <h1>Values Survey — Year 2075</h1>
+  <p>Please indicate how you think society currently prioritises the following three values, and how you think these will be prioritised in 2075.</p>
+  <ul>
+    <li><strong>Individual Autonomy</strong> — freedom for learners to choose what and how they learn.</li>
+    <li><strong>Knowledge Integrity</strong> — ensuring educational content remains accurate and unbiased.</li>
+    <li><strong>Equal Opportunity</strong> — fair access to learning for all, regardless of background.</li>
+  </ul>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Today</h2>
+      <div id="plot-today" style="height:500px;"></div>
+    </div>
+    <div class="card">
+      <h2>2075</h2>
+      <div id="plot-2075" style="height:500px;"></div>
+    </div>
+  </div>
+
+  <p><button id="submit-btn" disabled>Submit response</button></p>
+
+  <script>
+    const LABELS = {
+      A: "Individual Autonomy",
+      B: "Knowledge Integrity",
+      C: "Equal Opportunity"
+    };
+
+    const state = { today: null, y2075: null };
+
+    function makeFigure() {
+      return {
+        data: [{ type: "scatterternary", mode: "markers", a: [], b: [], c: [], marker: { size: 12 } }],
+        layout: {
+          ternary: {
+            aaxis: { title: LABELS.A, min: 0 },
+            baxis: { title: LABELS.B, min: 0 },
+            caxis: { title: LABELS.C, min: 0 },
+            sum: 1
+          },
+          margin: { l: 40, r: 40, b: 40, t: 20 }
+        },
+        config: { responsive: true, displayModeBar: false }
+      };
+    }
+
+    function mount(id, key) {
+      const el = document.getElementById(id);
+      const fig = makeFigure();
+      Plotly.newPlot(el, fig.data, fig.layout, fig.config);
+      el.on('plotly_click', (ev) => {
+        const pt = ev.points?.[0];
+        if (!pt) return;
+        const a = pt.a, b = pt.b, c = pt.c;
+        Plotly.restyle(el, { a: [[a]], b: [[b]], c: [[c]] });
+        state[key] = { a, b, c };
+        document.getElementById('submit-btn').disabled = !(state.today && state.y2075);
+      });
+    }
+
+    mount("plot-today", "today");
+    mount("plot-2075", "y2075");
+
+    document.getElementById('submit-btn').addEventListener('click', () => {
+      console.log("SUBMIT", state);
+      alert("Response recorded (test mode) — check console for data!");
+    });
+  </script>
+</body>
+</html>
