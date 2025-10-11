@@ -16,7 +16,7 @@
     .muted { color:#555; font-size: 0.95rem; }
     .fallback { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top: 8px; }
     .fallback input { width: 70px; padding: 6px 8px; border:1px solid #ddd; border-radius:8px; }
-    #plot-today, #plot-2075 { touch-action: manipulation; } /* improves tapping on mobile */
+    #plot-today, #plot-2075 { touch-action: manipulation; }
     #ver { font-size: 0.9rem; color:#555; margin: 6px 0 16px; }
   </style>
 </head>
@@ -26,7 +26,7 @@
 
   <p class="muted">
     Place <strong>one dot</strong> on each triangle: <em>Today</em> and <em>2075</em>.
-    If tapping is tricky on your device, use the small % inputs below each plot and press <em>Set point</em>.
+    If tapping is tricky, use the % inputs and press <em>Set point</em>.
   </p>
   <ul>
     <li><strong>Individual Autonomy</strong> — freedom for learners to choose what and how they learn.</li>
@@ -64,9 +64,11 @@
   </p>
 
   <script>
-    // Google Sheets connection
-const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbyUmbtsoiPf9NtOEFjzZYYnnESpY3sEz--UA8q8t7VnwKeN2REcirPmvU7xUgFWmxfI/exec";
-    // Show Plotly version (helps confirm it loaded)
+    // ====== Google Sheets endpoint (Apps Script Web App URL) ======
+    const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbyUmbtsoiPf9NtOEFjzZYYnnESpY3sEz--UA8q8t7VnwKeN2REcirPmvU7xUgFWmxfI/exec";
+    // =============================================================
+
+    // Debug helper: confirm Plotly loaded
     try {
       document.getElementById('ver').textContent = 'Plotly loaded: v' + (window.Plotly?.version || 'NOT LOADED');
       console.log('Plotly version:', window.Plotly?.version);
@@ -78,7 +80,20 @@ const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbyUmbtsoiPf9NtOEFj
       C: "Equal Opportunity"
     };
 
-    // Dense clickable grid so taps/clicks always hit a point
+    // Persist a simple UUID per browser to discourage duplicates
+    function getUUID() {
+      const key = 'values_survey_uuid';
+      let u = localStorage.getItem(key);
+      if (!u) {
+        u = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+          (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+        );
+        localStorage.setItem(key, u);
+      }
+      return u;
+    }
+
+    // Generate a dense clickable grid so taps/clicks always hit a point
     function generateGrid(step = 0.04) {
       const a = [], b = [], c = [];
       for (let i = 0; i <= 1/step; i++) {
@@ -93,7 +108,7 @@ const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbyUmbtsoiPf9NtOEFj
     }
 
     function makeFigure() {
-      const grid = generateGrid(0.04); // smaller -> denser grid if needed
+      const grid = generateGrid(0.04);
       return {
         data: [
           {
@@ -179,18 +194,34 @@ const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbyUmbtsoiPf9NtOEFj
       mount('plot-2075', 'y2075');
     }
 
-    // Submit (test mode). TODO: replace with Google Sheets or Supabase POST.
+    // === Final submit: send to Google Sheets via Apps Script ===
     document.getElementById('submit-btn').addEventListener('click', async () => {
+      const status = document.getElementById('status');
+      if (!state.today || !state.y2075) return;
+
       const payload = {
         labels: LABELS,
         today: state.today,
         y2075: state.y2075,
-        ts: new Date().toISOString()
+        ts: new Date().toISOString(),
+        uuid: getUUID(),
+        ua: navigator.userAgent
       };
-      console.log('SUBMIT payload:', payload);
-      document.getElementById('status').textContent = 'Thanks — response recorded (test mode).';
-      // Example: to wire storage later, do a fetch() POST to your endpoint here.
+
+      status.textContent = 'Submitting…';
+
+      try {
+        // Send as form-encoded to avoid preflight/CORS issues
+        const body = new URLSearchParams({ payload: JSON.stringify(payload) });
+        await fetch(ENDPOINT_URL, { method: 'POST', body });
+        status.textContent = 'Thanks — response recorded!';
+        document.getElementById('submit-btn').disabled = true;
+      } catch (e) {
+        console.error(e);
+        status.textContent = 'Error submitting — please try again.';
+      }
     });
   </script>
 </body>
 </html>
+
