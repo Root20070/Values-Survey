@@ -1,0 +1,92 @@
+:root{
+  --bg:#0b1020;        /* dark spacey */
+  --card:#0f172a;      /* deep slate */
+  --text:#e5e7eb;      /* light text */
+  --muted:#94a3b8;     /* muted text */
+  --brand:#6ee7ff;     /* cyan */
+  --brand-2:#a78bfa;   /* violet */
+}
+
+/* Base */
+*{box-sizing:border-box}
+body{
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background:
+    radial-gradient(1200px 700px at 10% -10%, rgba(110,231,255,.25), transparent),
+    radial-gradient(1200px 700px at 90% -10%, rgba(167,139,250,.2), transparent),
+    var(--bg);
+  color: var(--text);
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0 24px 60px;
+  line-height: 1.65;
+}
+
+/* Hero */
+.hero{
+  margin-top: 52px;
+  border: 1px solid rgba(148,163,184,.2);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(148,163,184,.08), rgba(15,23,42,.6)),
+    rgba(2,6,23,.5);
+  box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.03);
+  padding: 28px 22px;
+  text-align: center;
+}
+h1{
+  margin: 0 0 8px;
+  font-size: clamp(26px, 4vw, 40px);
+  letter-spacing:.2px;
+}
+.lead{color:var(--muted); margin:0 auto 14px; max-width: 62ch}
+
+/* Badges */
+.badges{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin: 10px 0 0 }
+.badge{
+  border:1px solid rgba(148,163,184,.28);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: .95rem;
+  color: var(--text);
+  background: rgba(15,23,42,.6);
+}
+
+/* Buttons & links */
+.cta, .btn, .link {
+  display:inline-block; text-decoration:none; font-weight:700;
+  background: linear-gradient(90deg, var(--brand), var(--brand-2));
+  color:#0b1020; padding:12px 20px; border-radius: 999px; transition:.2s;
+  box-shadow: 0 6px 22px rgba(110,231,255,.25);
+}
+.cta:hover, .btn:hover, .link:hover{ transform: translateY(-1px); }
+.btn.ghost{
+  background: transparent; color: var(--text);
+  border:1px solid rgba(148,163,184,.35); box-shadow:none; padding:10px 16px;
+  border-radius:10px;
+}
+
+/* Cards & layout */
+.card{
+  background: linear-gradient(180deg, rgba(148,163,184,.05), rgba(15,23,42,.7));
+  border: 1px solid rgba(148,163,184,.2);
+  border-radius: 16px;
+  padding: 18px 18px;
+  margin-top: 18px;
+  box-shadow: 0 10px 24px rgba(0,0,0,.25);
+}
+.grid{ display:grid; gap:18px; grid-template-columns: 1fr; }
+@media (min-width: 900px){ .grid{ grid-template-columns: 1fr 1fr; } }
+
+footer{ text-align:center; margin-top:28px; color:var(--muted); font-size:.95rem }
+
+/* Form bits */
+.controls { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:8px }
+.controls label{ font-size:.95rem; color:var(--muted) }
+.controls input{
+  width: 80px; padding: 6px 8px; border:1px solid rgba(148,163,184,.35);
+  border-radius:8px; background: rgba(2,6,23,.35); color: var(--text);
+}
+.status { color: var(--muted); margin-left:10px }
+.topnav { margin:10px 0 }
+.topnav a { color:#9ecbff; text-decoration:none; font-weight:600 }
