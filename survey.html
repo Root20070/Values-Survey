@@ -2,85 +2,91 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Values Survey — Year 2075</title>
+  <title>Root — Values Survey</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Shared theme -->
+  <link rel="stylesheet" href="styles.css" />
   <!-- Plotly -->
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
-  <style>
-    body { font-family: system-ui, Arial, sans-serif; margin: 24px; line-height: 1.5; }
-    .grid { display: grid; gap: 24px; grid-template-columns: 1fr; max-width: 1100px; }
-    @media (min-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } }
-    .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.04); }
-    button { padding: 10px 16px; border-radius: 10px; background: #222; color: white; border: none; cursor: pointer; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .muted { color:#555; font-size: 0.95rem; }
-    .fallback { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top: 8px; }
-    .fallback input { width: 70px; padding: 6px 8px; border:1px solid #ddd; border-radius:8px; }
-    #plot-today, #plot-2075 { touch-action: manipulation; }
-    #ver { font-size: 0.9rem; color:#555; margin: 6px 0 16px; }
-  </style>
+  <link rel="icon" href="favicon.ico" />
 </head>
 <body>
-  <h1>Values Survey — Year 2075</h1>
-  <div id="ver">Checking Plotly…</div>
+  <!-- Top nav -->
+  <p class="topnav"><a href="index.html">← Back to Home</a></p>
 
-  <p class="muted">
-    Place <strong>one dot</strong> on each triangle: <em>Today</em> and <em>2075</em>.
-    If tapping is tricky, use the % inputs and press <em>Set point</em>.
-  </p>
-  <ul>
-    <li><strong>Individual Autonomy</strong> — freedom for learners to choose what and how they learn.</li>
-    <li><strong>Knowledge Integrity</strong> — ensuring educational content remains accurate and unbiased.</li>
-    <li><strong>Equal Opportunity</strong> — fair access to learning for all, regardless of background.</li>
-  </ul>
-
-  <div class="grid">
-    <div class="card">
-      <h2>Today</h2>
-      <div id="plot-today" style="height:520px;"></div>
-      <div class="fallback">
-        <label>A (%): <input type="number" id="todayA" min="0" max="100" value="34"></label>
-        <label>B (%): <input type="number" id="todayB" min="0" max="100" value="33"></label>
-        <label>C (%): <input type="number" id="todayC" min="0" max="100" value="33"></label>
-        <button type="button" onclick="setPointFromInputs('today')">Set point</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>2075</h2>
-      <div id="plot-2075" style="height:520px;"></div>
-      <div class="fallback">
-        <label>A (%): <input type="number" id="y2075A" min="0" max="100" value="34"></label>
-        <label>B (%): <input type="number" id="y2075B" min="0" max="100" value="33"></label>
-        <label>C (%): <input type="number" id="y2075C" min="0" max="100" value="33"></label>
-        <button type="button" onclick="setPointFromInputs('y2075')">Set point</button>
-      </div>
+  <!-- HERO -->
+  <div class="hero">
+    <h1>Place your two points</h1>
+    <p class="lead">
+      One dot for <em>today</em>, one dot for <em>2075</em>. Each dot shows the balance between
+      <strong>Autonomy</strong>, <strong>Knowledge Integrity</strong>, and <strong>Equality</strong>.
+    </p>
+    <div class="badges">
+      <span class="badge">Autonomy</span>
+      <span class="badge">Knowledge Integrity</span>
+      <span class="badge">Equality</span>
     </div>
   </div>
 
-  <p style="margin-top:20px;">
-    <button id="submit-btn" disabled>Submit response</button>
-    <span id="status" class="muted" style="margin-left:10px;"></span>
-  </p>
+  <!-- PLOTS + CONTROLS -->
+  <section class="card">
+    <div id="ver" class="lead" style="text-align:center;">Checking Plotly…</div>
+
+    <div class="grid">
+      <!-- TODAY -->
+      <div class="card">
+        <h2 style="margin-top:0">Today</h2>
+        <div id="plot-today" style="height:520px;"></div>
+        <div class="controls">
+          <label>A (%): <input type="number" id="todayA" min="0" max="100" value="34"></label>
+          <label>B (%): <input type="number" id="todayB" min="0" max="100" value="33"></label>
+          <label>C (%): <input type="number" id="todayC" min="0" max="100" value="33"></label>
+          <a class="btn ghost" href="#" id="btnSetToday">Set point</a>
+        </div>
+      </div>
+
+      <!-- 2075 -->
+      <div class="card">
+        <h2 style="margin-top:0">Year 2075</h2>
+        <div id="plot-2075" style="height:520px;"></div>
+        <div class="controls">
+          <label>A (%): <input type="number" id="y2075A" min="0" max="100" value="34"></label>
+          <label>B (%): <input type="number" id="y2075B" min="0" max="100" value="33"></label>
+          <label>C (%): <input type="number" id="y2075C" min="0" max="100" value="33"></label>
+          <a class="btn ghost" href="#" id="btnSetFuture">Set point</a>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:14px; margin-top:14px; flex-wrap:wrap">
+      <a class="btn" href="#" id="submit-btn" style="opacity:.6; pointer-events:none">Submit response →</a>
+      <span id="status" class="status"></span>
+    </div>
+  </section>
+
+  <footer>
+    <p>© 2025 UCD Digital Society — Root Survey</p>
+  </footer>
 
   <script>
     // ====== Google Sheets endpoint (Apps Script Web App URL) ======
-    const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbyUmbtsoiPf9NtOEFjzZYYnnESpY3sEz--UA8q8t7VnwKeN2REcirPmvU7xUgFWmxfI/exec";
+    const ENDPOINT_URL = "https://docs.google.com/spreadsheets/d/1-_CovZCPKufnkHN4-l1Xp4TOPmzSkA_ms50Owjq8KrY/edit?gid=0#gid=0";
     // =============================================================
 
-    // Debug helper: confirm Plotly loaded
-    try {
-      document.getElementById('ver').textContent = 'Plotly loaded: v' + (window.Plotly?.version || 'NOT LOADED');
-      console.log('Plotly version:', window.Plotly?.version);
-    } catch (e) {}
-
+    // Labels
     const LABELS = {
       A: "Individual Autonomy",
       B: "Knowledge Integrity",
       C: "Equal Opportunity"
     };
 
-    // Persist a simple UUID per browser to discourage duplicates
+    // Plotly version hint
+    try {
+      document.getElementById('ver').textContent = 'Plotly loaded: v' + (window.Plotly?.version || 'NOT LOADED');
+      console.log('Plotly version:', window.Plotly?.version);
+    } catch (e) {}
+
+    // UUID per browser to discourage duplicates
     function getUUID() {
       const key = 'values_survey_uuid';
       let u = localStorage.getItem(key);
@@ -93,7 +99,7 @@
       return u;
     }
 
-    // Generate a dense clickable grid so taps/clicks always hit a point
+    // Dense click grid so taps always hit a point
     function generateGrid(step = 0.04) {
       const a = [], b = [], c = [];
       for (let i = 0; i <= 1/step; i++) {
@@ -112,7 +118,6 @@
       return {
         data: [
           {
-            // Faint but tappable grid markers (touch devices need >0 opacity)
             type: "scatterternary",
             mode: "markers",
             a: grid.a, b: grid.b, c: grid.c,
@@ -121,7 +126,6 @@
             name: "click-grid"
           },
           {
-            // Visible single response point
             type: "scatterternary",
             mode: "markers",
             a: [], b: [], c: [],
@@ -147,12 +151,15 @@
 
     const state = { today: null, y2075: null };
 
-    function maybeEnableSubmit() {
-      document.getElementById('submit-btn').disabled = !(state.today && state.y2075);
+    function updateSubmitState() {
+      const ready = (state.today && state.y2075);
+      const btn = document.getElementById('submit-btn');
+      btn.style.pointerEvents = ready ? 'auto' : 'none';
+      btn.style.opacity = ready ? '1' : '.6';
     }
 
-    function mount(id, key) {
-      const el = document.getElementById(id);
+    function mountPlot(containerId, key) {
+      const el = document.getElementById(containerId);
       const fig = makeFigure();
       Plotly.newPlot(el, fig.data, fig.layout, fig.config).then(() => {
         el.on('plotly_click', (ev) => {
@@ -161,41 +168,41 @@
           const a = pt.a, b = pt.b, c = pt.c;
           Plotly.restyle(el, { a: [[a]], b: [[b]], c: [[c]] }, [1]); // update response trace
           state[key] = { a, b, c };
-          console.log(`Selected ${key}:`, state[key]);
-          maybeEnableSubmit();
+          updateSubmitState();
         });
       }).catch(err => {
-        console.error('Plot creation failed for', id, err);
+        console.error('Plot init failed for', containerId, err);
         alert('Plot failed to load — check console for details.');
       });
     }
 
-    // Fallback: set point from % inputs (normalised to sum=1)
     function setPointFromInputs(which) {
       const ids = which === 'today' ? ['todayA','todayB','todayC'] : ['y2075A','y2075B','y2075C'];
       const vals = ids.map(id => Math.max(0, Math.min(100, +document.getElementById(id).value || 0)));
       const sum = vals[0] + vals[1] + vals[2];
       if (!sum) return;
       const a = vals[0]/sum, b = vals[1]/sum, c = vals[2]/sum;
-
       const el = document.getElementById(which === 'today' ? 'plot-today' : 'plot-2075');
       Plotly.restyle(el, { a: [[a]], b: [[b]], c: [[c]] }, [1]);
       state[which] = { a, b, c };
-      console.log(`Set via inputs ${which}:`, state[which]);
-      maybeEnableSubmit();
+      updateSubmitState();
     }
-    window.setPointFromInputs = setPointFromInputs; // expose for button onclick
 
-    // Mount both plots
+    // Mount plots
     if (!window.Plotly) {
       alert('Plotly did not load. Check your network or the CDN URL.');
     } else {
-      mount('plot-today', 'today');
-      mount('plot-2075', 'y2075');
+      mountPlot('plot-today', 'today');
+      mountPlot('plot-2075', 'y2075');
     }
 
-    // === Final submit: send to Google Sheets via Apps Script ===
-    document.getElementById('submit-btn').addEventListener('click', async () => {
+    // Button handlers
+    document.getElementById('btnSetToday').addEventListener('click', (e)=>{ e.preventDefault(); setPointFromInputs('today'); });
+    document.getElementById('btnSetFuture').addEventListener('click', (e)=>{ e.preventDefault(); setPointFromInputs('y2075'); });
+
+    // Submit → Apps Script → redirect to thank-you
+    document.getElementById('submit-btn').addEventListener('click', async (e) => {
+      e.preventDefault();
       const status = document.getElementById('status');
       if (!state.today || !state.y2075) return;
 
@@ -211,11 +218,10 @@
       status.textContent = 'Submitting…';
 
       try {
-        // Send as form-encoded to avoid preflight/CORS issues
         const body = new URLSearchParams({ payload: JSON.stringify(payload) });
         await fetch(ENDPOINT_URL, { method: 'POST', body });
-        status.textContent = 'Thanks — response recorded!';
-        document.getElementById('submit-btn').disabled = true;
+        status.textContent = 'Thanks — response recorded! Redirecting…';
+        setTimeout(() => { window.location.href = 'thankyou.html'; }, 700);
       } catch (e) {
         console.error(e);
         status.textContent = 'Error submitting — please try again.';
