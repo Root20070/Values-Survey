@@ -90,3 +90,17 @@ footer{ text-align:center; margin-top:28px; color:var(--muted); font-size:.95rem
 .status { color: var(--muted); margin-left:10px }
 .topnav { margin:10px 0 }
 .topnav a { color:#9ecbff; text-decoration:none; font-weight:600 }
+/* === Fix for ternary plot label clipping (e.g., "Knowledge" cutoff) === */
+.js-plotly-plot, .main-svg, svg {
+  overflow: visible !important;  /* ensures long labels are shown */
+}
+
+.plot-container, .plotly, #plot {
+  margin: 0 auto;
+  overflow: visible !important;
+}
+
+.ternary .axis-title, .ternary text {
+  font-size: 14px;
+  white-space: nowrap;  /* prevents wrapping or truncation */
+}
