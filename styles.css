@@ -104,3 +104,48 @@ footer{ text-align:center; margin-top:28px; color:var(--muted); font-size:.95rem
   font-size: 14px;
   white-space: nowrap;  /* prevents wrapping or truncation */
 }
+/* === Mobile-first baseline === */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; overflow-x: hidden; }
+body { font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+
+/* Container centers content and adds horizontal padding */
+.container { max-width: 1100px; margin-inline: auto; padding-inline: 16px; }
+
+/* Make media scale down on small screens */
+img, video, canvas, svg { max-width: 100%; height: auto; display: block; }
+
+/* Avoid fixed pixel widths that break mobile */
+.responsive-block { width: 100%; max-width: 800px; }
+
+/* Simple grid that collapses on small screens */
+.grid { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+
+/* Forms: readable on mobile */
+form { display: grid; gap: 12px; }
+label { font-weight: 600; }
+input, select, textarea, button {
+  width: 100%;
+  max-width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font: inherit;
+}
+button { cursor: pointer; }
+
+/* Tables/charts that might be wider than the screen */
+.responsive-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* If you use a fixed header, offset the main content on small screens */
+.header-fixed { position: fixed; top: 0; left: 0; right: 0; z-index: 10; }
+.main-with-fixed-header { padding-top: 64px; } /* match your header height */
+
+/* Safe-area padding for iPhones with notches (only if your layout hugs edges) */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left
