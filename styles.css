@@ -149,3 +149,78 @@ body {
   padding-right: env(safe-area-inset-right);
   padding-bottom: env(safe-area-inset-bottom);
   padding-left
+<style>
+  /* === LAYOUT FIXES === */
+
+  /* make .grid a 2-column layout on large screens, stack on small screens */
+  .grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 820px) {
+    .grid { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* equal-height cards for Today / 2075 */
+  .card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: var(--panel, #121a2b);
+    border-radius: 16px;
+    padding: 1rem;
+    box-shadow: 0 6px 20px rgba(0,0,0,.25);
+    border: 1px solid #1d2640;
+  }
+
+  /* wrap for plot area — ensure square shape and centered plot */
+  .plot-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* make plots square and responsive */
+  #plot-today, #plot-2075 {
+    width: 100%;
+    max-width: 420px;
+    aspect-ratio: 1 / 1;  /* keeps the triangles identical */
+  }
+
+  /* center hero text & badges */
+  .hero {
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .badges {
+    display: flex;
+    justify-content: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .badge {
+    background: #101728;
+    border: 1px solid #26304a;
+    padding: 0.35rem 0.8rem;
+    border-radius: 999px;
+    color: #c8d1e4;
+    font-size: 0.9rem;
+  }
+
+  /* topnav + footer visual polish */
+  .topnav {
+    text-align: left;
+    margin: 1rem;
+  }
+
+  footer {
+    text-align: center;
+    margin-top: 2rem;
+    color: #98a1b3;
+    font-size: 0.9rem;
+  }
+</style>
