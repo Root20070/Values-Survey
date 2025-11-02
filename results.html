@@ -54,5 +54,144 @@
 
     Plotly.newPlot('aggregate-plot', data, layout, { responsive: true });
   </script>
-</body>
-</html>
+<script>
+(async () => {
+  const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbwhSuxpukigN3ZVXeYPL9JeRh7UWHr_O87BpR2hVpX_W74h21C25NHwtfs1rPELoToLdA/exec";
+
+  // ---------- helpers ----------
+  const mean = arr => arr.length ? arr.reduce((a,b)=>a+b,0) / arr.length : 0;
+
+  function normaliseRow({a,b,c}) {
+    const s = (a||0) + (b||0) + (c||0);
+    if (s <= 0) return {a:0, b:0, c:0};
+    return { a: (a||0)/s, b: (b||0)/s, c: (c||0)/s };
+  }
+
+  function dedupeByUUID(rows) {
+    const seen = new Set();
+    const out = [];
+    for (const r of rows) {
+      const id = r.uuid || r.UUID || r.id || r.browser_id || `row-${out.length}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      out.push(r);
+    }
+    return out;
+  }
+
+  // Parse CSV with columns: today_a,today_b,today_c,y2075_a,y2075_b,y2075_c,(uuid?)
+  function parseCSV(text) {
+    const lines = text.trim().split(/\r?\n/);
+    if (!lines.length) return [];
+    const header = lines[0].split(",").map(h => h.trim().toLowerCase());
+    const idx = name => header.indexOf(name);
+
+    const tA = idx("today_a"), tB = idx("today_b"), tC = idx("today_c");
+    const fA = idx("y2075_a"), fB = idx("y2075_b"), fC = idx("y2075_c");
+    const uuidI = header.findIndex(h => h.includes("uuid"));
+
+    const rows = [];
+    for (let i=1;i<lines.length;i++){
+      const cols = lines[i].split(",").map(x=>x.trim());
+      if (!cols.length) continue;
+      const today = normaliseRow({ a:+cols[tA], b:+cols[tB], c:+cols[tC] });
+      const y2075 = normaliseRow({ a:+cols[fA], b:+cols[fB], c:+cols[fC] });
+      rows.push({ today, y2075, uuid: uuidI>=0 ? cols[uuidI] : null });
+    }
+    return rows;
+  }
+
+  // Parse JSON that looks like: [{today:{a,b,c}, y2075:{a,b,c}, uuid, ts, ...}, ...]
+  function parseJSON(text) {
+    const payload = JSON.parse(text);
+    const arr = Array.isArray(payload.rows) ? payload.rows
+             : Array.isArray(payload.data) ? payload.data
+             : Array.isArray(payload) ? payload
+             : [];
+    return arr.map(r => ({
+      today: normaliseRow(r.today || {a:r.today_a, b:r.today_b, c:r.today_c}),
+      y2075: normaliseRow(r.y2075 || {a:r.y2075_a, b:r.y2075_b, c:r.y2075_c}),
+      uuid: r.uuid
+    }));
+  }
+
+  // ---------- load data ----------
+  let raw;
+  try {
+    const res = await fetch(ENDPOINT_URL, { method: "GET" });
+    const text = await res.text();
+
+    // Heuristics: try JSON first, fall back to CSV
+    raw = (/^\s*[\[{]/.test(text)) ? parseJSON(text) : parseCSV(text);
+  } catch (e) {
+    console.error("Fetch/parse failed:", e);
+    alert("Could not load results. Check the Apps Script sharing settings.");
+    return;
+  }
+
+  // ---------- clean data ----------
+  const rows = dedupeByUUID(raw).filter(r =>
+    r && r.today && r.y2075 &&
+    Number.isFinite(r.today.a) && Number.isFinite(r.today.b) && Number.isFinite(r.today.c) &&
+    Number.isFinite(r.y2075.a) && Number.isFinite(r.y2075.b) && Number.isFinite(r.y2075.c)
+  );
+
+  // Split to arrays for plotting
+  const tA = rows.map(r => r.today.a),  tB = rows.map(r => r.today.b),  tC = rows.map(r => r.today.c);
+  const fA = rows.map(r => r.y2075.a),  fB = rows.map(r => r.y2075.b),  fC = rows.map(r => r.y2075.c);
+
+  // Averages
+  const avgToday  = { a: mean(tA), b: mean(tB), c: mean(tC) };
+  const avgFuture = { a: mean(fA), b: mean(fB), c: mean(fC) };
+
+  // ---------- plot ----------
+  const traces = [
+    {
+      type: 'scatterternary',
+      mode: 'markers',
+      name: 'Today (2025) — individuals',
+      a: tA, b: tB, c: tC,
+      marker: { size: 6, color: '#6ee7ff', opacity: 0.35 },
+      hoverinfo: 'none'
+    },
+    {
+      type: 'scatterternary',
+      mode: 'markers',
+      name: 'Future (2075) — individuals',
+      a: fA, b: fB, c: fC,
+      marker: { size: 6, color: '#a78bfa', opacity: 0.35 },
+      hoverinfo: 'none'
+    },
+    {
+      type: 'scatterternary',
+      mode: 'markers+text',
+      name: 'Averages',
+      a: [avgToday.a, avgFuture.a],
+      b: [avgToday.b, avgFuture.b],
+      c: [avgToday.c, avgFuture.c],
+      text: ['Today (2025)', 'Future (2075)'],
+      textposition: 'top center',
+      marker: { size: 12, color: ['#6ee7ff', '#a78bfa'], line: { color:'#ffffff', width:2 } }
+    }
+  ];
+
+  const layout = {
+    title: 'Balance of Autonomy, Knowledge Integrity, and Equality',
+    ternary: {
+      sum: 1,
+      aaxis: { title: 'Autonomy' },
+      baxis: { title: 'Equality' },
+      caxis: { title: 'Knowledge Integrity' }
+    },
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    font: { color: '#e9edf7' },
+    legend: { orientation: 'h', x: 0.25, y: -0.15 }
+  };
+
+  Plotly.newPlot('aggregate-plot', traces, layout, { responsive: true });
+
+  // Optional: log the computed averages so you can paste them in the report
+  console.log('Averages -> Today:', avgToday, 'Future:', avgFuture, 'n=', rows.length);
+})();
+</script>
