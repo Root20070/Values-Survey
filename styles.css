@@ -224,3 +224,101 @@ body {
     font-size: 0.9rem;
   }
 </style>
+/* === GLOBAL LAYOUT FIXES (applies to all pages) === */
+
+/* Center the page content and prevent it hugging the left edge */
+body {
+  margin: 0 auto;
+  max-width: 1100px;
+  padding: 0 1rem;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+  background-color: var(--bg, #0b1220);
+  color: var(--text, #e9edf7);
+}
+
+/* Ensure links in topnav don’t push the layout */
+.topnav {
+  text-align: left;
+  margin: 1rem 0;
+}
+.topnav a {
+  color: #b3c7ff;
+  text-decoration: none;
+}
+
+/* Make hero sections always centered */
+.hero {
+  text-align: center;
+  margin: 2rem auto 1.5rem;
+  max-width: 800px;
+}
+.hero h1 {
+  margin-bottom: 0.5rem;
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+}
+.hero .lead {
+  color: #cfd6e8;
+  font-size: 1.1rem;
+}
+.badges {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+.badge {
+  background: #101728;
+  border: 1px solid #26304a;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  color: #c8d1e4;
+  font-size: 0.9rem;
+}
+
+/* Universal grid system for cards/sections */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+@media (min-width: 820px) {
+  .grid {
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+  }
+}
+
+/* Card styling for both survey & homepage blocks */
+.card {
+  background: var(--panel, #121a2b);
+  border-radius: 16px;
+  border: 1px solid #1d2640;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 100%;
+}
+
+/* Plot area should always stay square and centered */
+.plot-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#plot-today, #plot-2075 {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-width: 420px;
+}
+
+/* Footer consistency */
+footer {
+  text-align: center;
+  color: #98a1b3;
+  font-size: 0.9rem;
+  margin: 2rem 0 1rem;
+}
