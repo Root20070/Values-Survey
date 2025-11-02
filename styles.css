@@ -1,30 +1,47 @@
 :root{
-  --bg:#0b1020;        /* dark spacey */
-  --card:#0f172a;      /* deep slate */
-  --text:#e5e7eb;      /* light text */
-  --muted:#94a3b8;     /* muted text */
-  --brand:#6ee7ff;     /* cyan */
-  --brand-2:#a78bfa;   /* violet */
+  --bg:#0b1020;
+  --card:#0f172a;
+  --text:#e5e7eb;
+  --muted:#94a3b8;
+  --brand:#6ee7ff;
+  --brand-2:#a78bfa;
 }
 
-/* Base */
-*{box-sizing:border-box}
+/* ========== Base ========== */
+*{ box-sizing: border-box; }
+
+html, body{
+  margin: 0;
+  padding: 0;
+}
+
 body{
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
   background:
     radial-gradient(1200px 700px at 10% -10%, rgba(110,231,255,.25), transparent),
     radial-gradient(1200px 700px at 90% -10%, rgba(167,139,250,.2), transparent),
     var(--bg);
   color: var(--text);
-  max-width: 980px;
-  margin: 0 auto;
-  padding: 0 24px 60px;
-  line-height: 1.65;
+
+  /* iOS safe-area padding */
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
 }
 
-/* Hero */
+/* Center all page content */
+.container{
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* ========== Hero ========== */
 .hero{
-  margin-top: 52px;
+  margin: 52px auto 24px;
+  max-width: 800px;
+  text-align: center;
   border: 1px solid rgba(148,163,184,.2);
   border-radius: 16px;
   background:
@@ -32,17 +49,18 @@ body{
     rgba(2,6,23,.5);
   box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.03);
   padding: 28px 22px;
-  text-align: center;
 }
+
 h1{
   margin: 0 0 8px;
   font-size: clamp(26px, 4vw, 40px);
-  letter-spacing:.2px;
+  letter-spacing: .2px;
 }
-.lead{color:var(--muted); margin:0 auto 14px; max-width: 62ch}
+
+.lead{ color: var(--muted); margin: 0 auto 14px; max-width: 62ch; }
 
 /* Badges */
-.badges{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin: 10px 0 0 }
+.badges{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:10px; }
 .badge{
   border:1px solid rgba(148,163,184,.28);
   border-radius: 999px;
@@ -53,7 +71,7 @@ h1{
 }
 
 /* Buttons & links */
-.cta, .btn, .link {
+.cta, .btn, .link{
   display:inline-block; text-decoration:none; font-weight:700;
   background: linear-gradient(90deg, var(--brand), var(--brand-2));
   color:#0b1020; padding:12px 20px; border-radius: 999px; transition:.2s;
@@ -66,272 +84,41 @@ h1{
   border-radius:10px;
 }
 
-/* Cards & layout */
+/* ========== Layout blocks ========== */
 .card{
   background: linear-gradient(180deg, rgba(148,163,184,.05), rgba(15,23,42,.7));
   border: 1px solid rgba(148,163,184,.2);
   border-radius: 16px;
-  padding: 18px 18px;
+  padding: 18px;
   margin-top: 18px;
   box-shadow: 0 10px 24px rgba(0,0,0,.25);
+  display: flex;
+  flex-direction: column;
 }
-.grid{ display:grid; gap:18px; grid-template-columns: 1fr; }
+
+/* Grid: 1 column mobile, 2 columns from 900px */
+.grid{ display:grid; gap:18px; grid-template-columns: 1fr; align-items: stretch; }
 @media (min-width: 900px){ .grid{ grid-template-columns: 1fr 1fr; } }
 
-footer{ text-align:center; margin-top:28px; color:var(--muted); font-size:.95rem }
+.topnav { margin:10px 0; }
+.topnav a { color:#9ecbff; text-decoration:none; font-weight:600; }
 
-/* Form bits */
-.controls { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:8px }
-.controls label{ font-size:.95rem; color:var(--muted) }
+footer{ text-align:center; margin-top:28px; color:var(--muted); font-size:.95rem; }
+
+/* ========== Survey-specific ========== */
+.controls { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:8px; }
+.controls label{ font-size:.95rem; color:var(--muted); }
 .controls input{
   width: 80px; padding: 6px 8px; border:1px solid rgba(148,163,184,.35);
   border-radius:8px; background: rgba(2,6,23,.35); color: var(--text);
 }
-.status { color: var(--muted); margin-left:10px }
-.topnav { margin:10px 0 }
-.topnav a { color:#9ecbff; text-decoration:none; font-weight:600 }
-/* === Fix for ternary plot label clipping (e.g., "Knowledge" cutoff) === */
-.js-plotly-plot, .main-svg, svg {
-  overflow: visible !important;  /* ensures long labels are shown */
-}
+.status { color: var(--muted); margin-left:10px; }
 
-.plot-container, .plotly, #plot {
-  margin: 0 auto;
-  overflow: visible !important;
-}
+/* Plot wrappers keep canvases square and centered */
+.plot-wrapper{ flex:1; display:flex; align-items:center; justify-content:center; }
+#plot-today, #plot-2075{ width:100%; max-width:420px; aspect-ratio:1/1; }
 
-.ternary .axis-title, .ternary text {
-  font-size: 14px;
-  white-space: nowrap;  /* prevents wrapping or truncation */
-}
-/* === Mobile-first baseline === */
-* { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; overflow-x: hidden; }
-body { font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-
-/* Container centers content and adds horizontal padding */
-.container { max-width: 1100px; margin-inline: auto; padding-inline: 16px; }
-
-/* Make media scale down on small screens */
-img, video, canvas, svg { max-width: 100%; height: auto; display: block; }
-
-/* Avoid fixed pixel widths that break mobile */
-.responsive-block { width: 100%; max-width: 800px; }
-
-/* Simple grid that collapses on small screens */
-.grid { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); }
-@media (max-width: 900px) { .grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
-
-/* Forms: readable on mobile */
-form { display: grid; gap: 12px; }
-label { font-weight: 600; }
-input, select, textarea, button {
-  width: 100%;
-  max-width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font: inherit;
-}
-button { cursor: pointer; }
-
-/* Tables/charts that might be wider than the screen */
-.responsive-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-
-/* If you use a fixed header, offset the main content on small screens */
-.header-fixed { position: fixed; top: 0; left: 0; right: 0; z-index: 10; }
-.main-with-fixed-header { padding-top: 64px; } /* match your header height */
-
-/* Safe-area padding for iPhones with notches (only if your layout hugs edges) */
-body {
-  padding-top: env(safe-area-inset-top);
-  padding-right: env(safe-area-inset-right);
-  padding-bottom: env(safe-area-inset-bottom);
-  padding-left
-<style>
-  /* === LAYOUT FIXES === */
-
-  /* make .grid a 2-column layout on large screens, stack on small screens */
-  .grid {
-    display: grid;
-    gap: 1.5rem;
-    grid-template-columns: 1fr;
-  }
-  @media (min-width: 820px) {
-    .grid { grid-template-columns: 1fr 1fr; }
-  }
-
-  /* equal-height cards for Today / 2075 */
-  .card {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    background: var(--panel, #121a2b);
-    border-radius: 16px;
-    padding: 1rem;
-    box-shadow: 0 6px 20px rgba(0,0,0,.25);
-    border: 1px solid #1d2640;
-  }
-
-  /* wrap for plot area — ensure square shape and centered plot */
-  .plot-wrapper {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  /* make plots square and responsive */
-  #plot-today, #plot-2075 {
-    width: 100%;
-    max-width: 420px;
-    aspect-ratio: 1 / 1;  /* keeps the triangles identical */
-  }
-
-  /* center hero text & badges */
-  .hero {
-    text-align: center;
-    margin-bottom: 1.5rem;
-  }
-
-  .badges {
-    display: flex;
-    justify-content: center;
-    gap: 0.6rem;
-    flex-wrap: wrap;
-  }
-
-  .badge {
-    background: #101728;
-    border: 1px solid #26304a;
-    padding: 0.35rem 0.8rem;
-    border-radius: 999px;
-    color: #c8d1e4;
-    font-size: 0.9rem;
-  }
-
-  /* topnav + footer visual polish */
-  .topnav {
-    text-align: left;
-    margin: 1rem;
-  }
-
-  footer {
-    text-align: center;
-    margin-top: 2rem;
-    color: #98a1b3;
-    font-size: 0.9rem;
-  }
-</style>
-/* === GLOBAL LAYOUT FIXES (applies to all pages) === */
-
-/* Center the page content and prevent it hugging the left edge */
-body {
-  margin: 0 auto;
-  max-width: 1100px;
-  padding: 0 1rem;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
-  background-color: var(--bg, #0b1220);
-  color: var(--text, #e9edf7);
-}
-
-/* Ensure links in topnav don’t push the layout */
-.topnav {
-  text-align: left;
-  margin: 1rem 0;
-}
-.topnav a {
-  color: #b3c7ff;
-  text-decoration: none;
-}
-
-/* Make hero sections always centered */
-.hero {
-  text-align: center;
-  margin: 2rem auto 1.5rem;
-  max-width: 800px;
-}
-.hero h1 {
-  margin-bottom: 0.5rem;
-  font-size: clamp(1.8rem, 3vw, 2.4rem);
-}
-.hero .lead {
-  color: #cfd6e8;
-  font-size: 1.1rem;
-}
-.badges {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  margin-top: 0.75rem;
-}
-.badge {
-  background: #101728;
-  border: 1px solid #26304a;
-  padding: 0.35rem 0.8rem;
-  border-radius: 999px;
-  color: #c8d1e4;
-  font-size: 0.9rem;
-}
-
-/* Universal grid system for cards/sections */
-.grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.5rem;
-}
-@media (min-width: 820px) {
-  .grid {
-    grid-template-columns: 1fr 1fr;
-    align-items: stretch;
-  }
-}
-
-/* Card styling for both survey & homepage blocks */
-.card {
-  background: var(--panel, #121a2b);
-  border-radius: 16px;
-  border: 1px solid #1d2640;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  width: 100%;
-}
-
-/* Plot area should always stay square and centered */
-.plot-wrapper {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-#plot-today, #plot-2075 {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  max-width: 420px;
-}
-
-/* Footer consistency */
-footer {
-  text-align: center;
-  color: #98a1b3;
-  font-size: 0.9rem;
-  margin: 2rem 0 1rem;
-}
-/* === Center all page content === */
-.container {
-  max-width: 1100px;     /* keeps content from stretching too wide */
-  margin: 0 auto;        /* centers left & right */
-  padding: 0 1rem;       /* adds a little breathing room on edges */
-}
-
-/* Optional: smooth out the top section too */
-.hero {
-  text-align: center;
-  margin: 2rem auto 2rem;
-  max-width: 800px;
-}
+/* Plotly label visibility */
+.js-plotly-plot, .main-svg, svg{ overflow: visible !important; }
+.ternary .axis-title, .ternary text{ font-size:14px; white-space:nowrap; }
+img, video, canvas, svg{ max-width:100%; height:auto; display:block; }
