@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Results | Root Survey</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <p class="topnav"><a href="index.html">← Back to Home</a></p>
+
+    <div class="hero">
+      <h1>Average Results — Root Values Survey</h1>
+      <p class="lead">Based on 50 valid responses</p>
+    </div>
+
+    <div class="card">
+      <div id="aggregate-plot" style="height:520px;"></div>
+    </div>
+
+    <footer>
+      <p>© 2025 UCD Digital Society | MIS20070 Group Project</p>
+    </footer>
+  </div>
+
+  <script>
+    const data = [
+      {
+        type: 'scatterternary',
+        mode: 'markers+text',
+        a: [0.3005510753, 0.4853340252],
+        b: [0.3645729298, 0.2350801103],
+        c: [0.334875995, 0.2795858646],
+        text: ['Today (2025)', 'Future (2075)'],
+        textposition: 'top center',
+        marker: { size: 12, color: ['#6ee7ff', '#a78bfa'] }
+      }
+    ];
+
+    const layout = {
+      title: 'Balance of Autonomy, Knowledge Integrity, and Equality',
+      ternary: {
+        sum: 1,
+        aaxis: { title: 'Autonomy' },
+        baxis: { title: 'Equality' },
+        caxis: { title: 'Knowledge Integrity' }
+      },
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor: 'rgba(0,0,0,0)',
+      font: { color: '#e9edf7' }
+    };
+
+    Plotly.newPlot('aggregate-plot', data, layout, { responsive: true });
+  </script>
+</body>
+</html>
