@@ -5,11 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Results | Root Values Survey</title>
 
-  <!-- Link to your shared stylesheet -->
   <link rel="stylesheet" href="styles.css" />
-
-  <!-- Plotly library -->
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <!-- Robust CSV parser -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body>
   <div class="container">
@@ -18,6 +17,7 @@
     <div class="hero">
       <h1>Results — Root Values Survey</h1>
       <p class="lead" id="lead">Loading results…</p>
+      <p class="lead" id="diag" style="font-size:.95rem; color:#94a3b8;"></p>
     </div>
 
     <div class="card">
@@ -29,10 +29,151 @@
     </footer>
   </div>
 
-  <!-- 🧠 SCRIPT: fetch + parse + plot -->
-  <script>
-  (async () => {
-    // 👇 Your live Google Apps Script endpoint
-    const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbwhSuxpukigN3ZVXeYPL9JeRh7UWHr_O87BpR2hVpX_W74h21C25NHwtfs1rPELoToLdA/exec";
+<script>
+(async () => {
+  const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbwhSuxpukigN3ZVXeYPL9JeRh7UWHr_O87BpR2hVpX_W74h21C25NHwtfs1rPELoToLdA/exec";
+  const leadEl = document.getElementById('lead');
+  const diagEl = document.getElementById('diag');
 
-    // --- 1️⃣ FETCH DA
+  const mean = a => a.reduce((x,y)=>x+y,0)/a.length;
+  const norm = ({a,b,c}) => {
+    const s = (a||0)+(b||0)+(c||0);
+    return s>0 ? {a:(a||0)/s, b:(b||0)/s, c:(c||0)/s} : {a:0,b:0,c:0};
+  };
+
+  // ---- fuzzy header matchers ----
+  const lc = s => (s||"").toString().trim().toLowerCase();
+  const includesAny = (s, arr) => arr.some(x => lc(s).includes(x));
+
+  function pick(row, yearTags, compTags) {
+    // Find the first column whose header includes one of yearTags and one of compTags
+    for (const key of Object.keys(row)) {
+      const k = lc(key);
+      if (includesAny(k, yearTags) && includesAny(k, compTags)) {
+        const v = row[key];
+        const num = typeof v === 'number' ? v : parseFloat(v);
+        if (Number.isFinite(num)) return num;
+      }
+    }
+    return NaN;
+  }
+
+  function rowToPoints(row) {
+    // Common variants for labels
+    const A = ['a','autonomy'];
+    const B = ['b','equality','equal'];
+    const C = ['c','knowledge','integrity'];
+
+    const T = ['today','2025','current','now'];
+    const F = ['2075','future','y2075'];
+
+    // direct columns (today_a, y2075_c etc.)
+    const today = norm({ a: pick(row,T,A), b: pick(row,T,B), c: pick(row,T,C) });
+    const y2075 = norm({ a: pick(row,F,A), b: pick(row,F,B), c: pick(row,F,C) });
+
+    if ([today.a,today.b,today.c,y2075.a,y2075.b,y2075.c].every(Number.isFinite)) {
+      return { today, y2075 };
+    }
+    return null;
+  }
+
+  // ---- fetch ----
+  let text;
+  try {
+    const res = await fetch(ENDPOINT_URL, { cache:'no-store' });
+    text = await res.text();
+  } catch (e) {
+    leadEl.textContent = "⚠️ Could not load results (network error).";
+    return;
+  }
+
+  let rows = [];
+  let headersPreview = [];
+
+  try {
+    if (/^\s*[\[{]/.test(text)) {
+      // JSON array or {rows:[...]}
+      const payload = JSON.parse(text);
+      const arr = Array.isArray(payload.rows) ? payload.rows
+                : Array.isArray(payload.data) ? payload.data
+                : Array.isArray(payload)      ? payload : [];
+      headersPreview = arr.length ? Object.keys(arr[0]) : [];
+      // Accept {today:{a,b,c}} structure or flat today_a...
+      rows = arr.map(r => {
+        if (r.today && r.y2075) return { today: norm(r.today), y2075: norm(r.y2075) };
+        return rowToPoints(r);
+      }).filter(Boolean);
+    } else {
+      // CSV (may contain a payload column or flat columns)
+      const parsed = Papa.parse(text, { header:true, dynamicTyping:true, skipEmptyLines:true });
+      headersPreview = parsed.meta.fields || [];
+      rows = parsed.data.map(row => {
+        // If there's a "payload" column with JSON, parse that
+        const payloadKey = Object.keys(row).find(k => lc(k) === 'payload');
+        if (payloadKey && row[payloadKey]) {
+          try {
+            const obj = JSON.parse(row[payloadKey]);
+            if (obj.today && obj.y2075) return { today: norm(obj.today), y2075: norm(obj.y2075) };
+          } catch {}
+        }
+        return rowToPoints(row);
+      }).filter(Boolean);
+    }
+  } catch (e) {
+    leadEl.textContent = "⚠️ Could not parse results (unexpected format).";
+    diagEl.textContent = "";
+    return;
+  }
+
+  if (!rows.length) {
+    leadEl.textContent = "No valid rows found. Check column names in the sheet.";
+    diagEl.textContent = headersPreview.length
+      ? `Detected columns: ${headersPreview.join(' · ')}`
+      : "";
+    // Render empty ternary frame so page still looks okay
+    Plotly.newPlot('aggregate-plot', [], {
+      ternary:{ sum:1, aaxis:{title:'Autonomy'}, baxis:{title:'Equality'}, caxis:{title:'Knowledge Integrity'} },
+      paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:'#e9edf7'}
+    }, {responsive:true});
+    return;
+  }
+
+  // ---- build arrays & plot ----
+  const tA = rows.map(r=>r.today.a), tB = rows.map(r=>r.today.b), tC = rows.map(r=>r.today.c);
+  const fA = rows.map(r=>r.y2075.a), fB = rows.map(r=>r.y2075.b), fC = rows.map(r=>r.y2075.c);
+
+  const avgToday  = { a: mean(tA), b: mean(tB), c: mean(tC) };
+  const avgFuture = { a: mean(fA), b: mean(fB), c: mean(fC) };
+
+  const traces = [
+    { type:'scatterternary', mode:'markers', name:'Today (2025) — individuals',
+      a:tA, b:tB, c:tC, marker:{ size:6, color:'#6ee7ff', opacity:0.35 }, hoverinfo:'none' },
+    { type:'scatterternary', mode:'markers', name:'Future (2075) — individuals',
+      a:fA, b:fB, c:fC, marker:{ size:6, color:'#a78bfa', opacity:0.35 }, hoverinfo:'none' },
+    { type:'scatterternary', mode:'markers+text', name:'Averages',
+      a:[avgToday.a, avgFuture.a], b:[avgToday.b, avgFuture.b], c:[avgToday.c, avgFuture.c],
+      text:['Today (2025)','Future (2075)'], textposition:'top center',
+      marker:{ size:12, color:['#6ee7ff','#a78bfa'], line:{ color:'#fff', width:2 } } }
+  ];
+
+  const layout = {
+    title: 'Balance of Autonomy, Knowledge Integrity, and Equality',
+    ternary: {
+      sum: 1,
+      aaxis: { title: 'Autonomy' },
+      baxis: { title: 'Equality' },
+      caxis: { title: 'Knowledge Integrity' }
+    },
+    paper_bgcolor:'rgba(0,0,0,0)',
+    plot_bgcolor:'rgba(0,0,0,0)',
+    font:{ color:'#e9edf7' },
+    legend:{ orientation:'h', x:0.25, y:-0.15 }
+  };
+
+  Plotly.newPlot('aggregate-plot', traces, layout, { responsive:true });
+  leadEl.textContent = `Based on ${rows.length} valid responses`;
+  diagEl.textContent = headersPreview.length ? `Detected columns: ${headersPreview.join(' · ')}` : "";
+})();
+</script>
+</body>
+</html>
