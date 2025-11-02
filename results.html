@@ -3,11 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Results | Root Survey</title>
+  <title>Results | Root Values Survey</title>
+
+  <!-- Link to your shared stylesheet -->
   <link rel="stylesheet" href="styles.css" />
+
+  <!-- Plotly library -->
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
-  <!-- Robust CSV parser (handles commas/quotes properly) -->
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body>
   <div class="container">
@@ -27,138 +29,10 @@
     </footer>
   </div>
 
+  <!-- 🧠 SCRIPT: fetch + parse + plot -->
   <script>
   (async () => {
+    // 👇 Your live Google Apps Script endpoint
     const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbwhSuxpukigN3ZVXeYPL9JeRh7UWHr_O87BpR2hVpX_W74h21C25NHwtfs1rPELoToLdA/exec";
 
-    const mean = arr => arr.length ? arr.reduce((a,b)=>a+b,0) / arr.length : 0;
-    const norm = ({a,b,c}) => {
-      const s = (a||0)+(b||0)+(c||0);
-      return s>0 ? {a:(a||0)/s, b:(b||0)/s, c:(c||0)/s} : {a:0,b:0,c:0};
-    };
-    const first = (...keys) => row => {
-      for (const k of keys) { if (k in row && row[k] != null && row[k] !== "") return +row[k]; }
-      return NaN;
-    };
-
-    // Map many possible header names to a,b,c for both years
-    const pickTodayA = first('today_a','today.a','todayA','A_today','A (today)','A');
-    const pickTodayB = first('today_b','today.b','todayB','B_today','B (today)','B');
-    const pickTodayC = first('today_c','today.c','todayC','C_today','C (today)','C');
-
-    const pick2075A  = first('y2075_a','2075_a','y2075.a','A_2075','A (2075)','future_a','future.a');
-    const pick2075B  = first('y2075_b','2075_b','y2075.b','B_2075','B (2075)','future_b','future.b');
-    const pick2075C  = first('y2075_c','2075_c','y2075.c','C_2075','C (2075)','future_c','future.c');
-
-    const pickUUID   = first('uuid','UUID','id','browser_id','participant_id');
-
-    // Fetch as text; we’ll try JSON first, then CSV with PapaParse
-    let text;
-    try {
-      const res = await fetch(ENDPOINT_URL, { cache: 'no-store' });
-      text = await res.text();
-    } catch (e) {
-      console.error(e);
-      document.getElementById('lead').textContent = "Could not load results (network error).";
-      return;
-    }
-
-    let rows = [];
-    try {
-      if (/^\s*[\[{]/.test(text)) {
-        // JSON pathways
-        const payload = JSON.parse(text);
-        const arr = Array.isArray(payload.rows) ? payload.rows
-                  : Array.isArray(payload.data) ? payload.data
-                  : Array.isArray(payload)      ? payload : [];
-        rows = arr.map(r => ({
-          uuid: r.uuid ?? r.UUID ?? r.id ?? r.browser_id ?? null,
-          today: norm({
-            a: r.today?.a ?? r.today_a, b: r.today?.b ?? r.today_b, c: r.today?.c ?? r.today_c
-          }),
-          y2075: norm({
-            a: r.y2075?.a ?? r.y2075_a, b: r.y2075?.b ?? r.y2075_b, c: r.y2075?.c ?? r.y2075_c
-          })
-        }));
-      } else {
-        // CSV pathway with PapaParse (handles commas/quotes)
-        const parsed = Papa.parse(text, { header: true, dynamicTyping: true, skipEmptyLines: true });
-        const seen = new Set();
-        const cleaned = [];
-        for (const row of parsed.data) {
-          const uuid = pickUUID(row) || `row-${cleaned.length}`;
-          if (seen.has(uuid)) continue;
-          seen.add(uuid);
-
-          const today = norm({
-            a: pickTodayA(row), b: pickTodayB(row), c: pickTodayC(row)
-          });
-          const y2075 = norm({
-            a: pick2075A(row), b: pick2075B(row), c: pick2075C(row)
-          });
-
-          if ([today.a,today.b,today.c,y2075.a,y2075.b,y2075.c].every(Number.isFinite)) {
-            cleaned.push({ uuid, today, y2075 });
-          }
-        }
-        rows = cleaned;
-      }
-    } catch (e) {
-      console.error("Parse error:", e);
-      document.getElementById('lead').textContent = "Could not parse results (unexpected format).";
-      return;
-    }
-
-    if (!rows.length) {
-      document.getElementById('lead').textContent = "No valid rows found. Check column names in the sheet.";
-      // Still render a blank frame so the page doesn’t look broken
-      Plotly.newPlot('aggregate-plot', [], {
-        ternary:{sum:1,aaxis:{title:'Autonomy'},baxis:{title:'Equality'},caxis:{title:'Knowledge Integrity'}},
-        paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:'#e9edf7'}
-      }, {responsive:true});
-      return;
-    }
-
-    // Flatten
-    const tA = rows.map(r => r.today.a),  tB = rows.map(r => r.today.b),  tC = rows.map(r => r.today.c);
-    const fA = rows.map(r => r.y2075.a), fB = rows.map(r => r.y2075.b), fC = rows.map(r => r.y2075.c);
-
-    // Averages
-    const avgToday  = { a: mean(tA), b: mean(tB), c: mean(tC) };
-    const avgFuture = { a: mean(fA), b: mean(fB), c: mean(fC) };
-
-    // Plot
-    const traces = [
-      { type:'scatterternary', mode:'markers', name:'Today (2025) — individuals',
-        a:tA, b:tB, c:tC, marker:{size:6, color:'#6ee7ff', opacity:0.35}, hoverinfo:'none' },
-      { type:'scatterternary', mode:'markers', name:'Future (2075) — individuals',
-        a:fA, b:fB, c:fC, marker:{size:6, color:'#a78bfa', opacity:0.35}, hoverinfo:'none' },
-      { type:'scatterternary', mode:'markers+text', name:'Averages',
-        a:[avgToday.a, avgFuture.a], b:[avgToday.b, avgFuture.b], c:[avgToday.c, avgFuture.c],
-        text:['Today (2025)','Future (2075)'], textposition:'top center',
-        marker:{ size:12, color:['#6ee7ff','#a78bfa'], line:{color:'#fff', width:2} } }
-    ];
-
-    const layout = {
-      title: 'Balance of Autonomy, Knowledge Integrity, and Equality',
-      ternary: {
-        sum: 1,
-        aaxis: { title: 'Autonomy' },
-        baxis: { title: 'Equality' },
-        caxis: { title: 'Knowledge Integrity' }
-      },
-      paper_bgcolor:'rgba(0,0,0,0)',
-      plot_bgcolor:'rgba(0,0,0,0)',
-      font:{ color:'#e9edf7' },
-      legend:{ orientation:'h', x:0.25, y:-0.15 }
-    };
-
-    Plotly.newPlot('aggregate-plot', traces, layout, { responsive: true });
-
-    const lead = document.getElementById('lead');
-    if (lead) lead.textContent = `Based on ${rows.length} valid responses`;
-    console.log('Averages -> Today:', avgToday, 'Future:', avgFuture, 'n =', rows.length);
-  })();
-  </script>
-</body>
-</html>
+    // --- 1️⃣ FETCH DA
