@@ -16,6 +16,7 @@
     <div class="hero">
       <h1>Results — Root Values Survey</h1>
       <p class="lead" id="lead">Loading results…</p>
+      <p class="lead" id="diag" style="font-size:.95rem; color:#94a3b8;"></p>
     </div>
 
     <div class="card">
@@ -31,82 +32,113 @@
 (async () => {
   const ENDPOINT_URL = "https://script.google.com/macros/s/AKfycbwhSuxpukigN3ZVXeYPL9JeRh7UWHr_O87BpR2hVpX_W74h21C25NHwtfs1rPELoToLdA/exec";
   const leadEl = document.getElementById('lead');
+  const diagEl = document.getElementById('diag');
 
-  const mean = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
-  const norm = ({a,b,c}) => {
+  const mean = a => a.reduce((x,y)=>x+y,0)/a.length;
+  const normalise = ({a,b,c}) => {
     const s = (a||0)+(b||0)+(c||0);
     return s>0 ? {a:(a||0)/s, b:(b||0)/s, c:(c||0)/s} : {a:0,b:0,c:0};
   };
 
-  // Fetch CSV data
-  let csvText;
+  // 1) Fetch CSV
+  let csvText = "";
   try {
     const res = await fetch(ENDPOINT_URL, { cache: "no-store" });
     csvText = await res.text();
   } catch (e) {
-    leadEl.textContent = "⚠️ Could not load data (network issue).";
+    console.error(e);
+    leadEl.textContent = "⚠️ Could not load data (network).";
     return;
   }
 
-  // Parse CSV
+  // 2) Parse CSV
   const parsed = Papa.parse(csvText, { header: true, dynamicTyping: true, skipEmptyLines: true });
-  const rows = parsed.data.filter(r =>
-    Number.isFinite(r.today_a) &&
-    Number.isFinite(r.today_b) &&
-    Number.isFinite(r.today_c) &&
-    Number.isFinite(r.y2075_a) &&
-    Number.isFinite(r.y2075_b) &&
-    Number.isFinite(r.y2075_c)
-  );
+  const fields = parsed.meta.fields || [];
 
-  if (!rows.length) {
-    leadEl.textContent = "⚠️ No valid rows found. Check column names in the sheet.";
+  // 3) Build a header map that ignores punctuation/spaces/# etc.
+  const normKey = k => String(k)
+      .toLowerCase()
+      .normalize('NFKD')
+      .replace(/[#\s\-\.\(\)]/g, '')   // remove common stray symbols
+      .replace(/[^a-z0-9_]/g, '');     // keep only safe chars
+
+  const map = {};   // normalised -> original header
+  fields.forEach(f => { map[normKey(f)] = f; });
+
+  // expected keys after normalisation
+  const need = {
+    today_a:  map['todaya']   || map['today_a'],
+    today_b:  map['todayb']   || map['today_b'],
+    today_c:  map['todayc']   || map['today_c'],
+    y2075_a:  map['y2075a']   || map['futurea']   || map['y2075_a'],
+    y2075_b:  map['y2075b']   || map['futureb']   || map['y2075_b'],
+    y2075_c:  map['y2075c']   || map['futurec']   || map['y2075_c'],
+  };
+
+  const missing = Object.entries(need)
+    .filter(([,orig]) => !orig)
+    .map(([k]) => k);
+
+  // Show what we detected (helps debugging if anything is missing)
+  diagEl.textContent = `Detected columns: ${fields.join(' · ')}` + (missing.length ? ` — Missing: ${missing.join(', ')}` : '');
+
+  if (missing.length) {
+    leadEl.textContent = "⚠️ Column names not recognised. Please keep headers like: today_a, today_b, today_c, y2075_a, y2075_b, y2075_c.";
+    // Draw an empty ternary frame so the page still looks tidy
+    Plotly.newPlot('aggregate-plot', [], {
+      ternary:{ sum:1, aaxis:{title:'Autonomy'}, baxis:{title:'Equality'}, caxis:{title:'Knowledge Integrity'} },
+      paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:'#e9edf7'}
+    }, {responsive:true});
     return;
   }
 
-  // Extract and normalise
-  const tA = [], tB = [], tC = [], fA = [], fB = [], fC = [];
-  for (const r of rows) {
-    const today = norm({ a:r.today_a, b:r.today_b, c:r.today_c });
-    const future = norm({ a:r.y2075_a, b:r.y2075_b, c:r.y2075_c });
-    tA.push(today.a); tB.push(today.b); tC.push(today.c);
-    fA.push(future.a); fB.push(future.b); fC.push(future.c);
+  // 4) Extract & normalise rows
+  const tA=[], tB=[], tC=[], fA=[], fB=[], fC=[];
+  for (const row of parsed.data) {
+    const ta = +row[need.today_a], tb = +row[need.today_b], tc = +row[need.today_c];
+    const fa = +row[need.y2075_a], fb = +row[need.y2075_b], fc = +row[need.y2075_c];
+    if ([ta,tb,tc,fa,fb,fc].every(Number.isFinite)) {
+      const t = normalise({a:ta,b:tb,c:tc});
+      const f = normalise({a:fa,b:fb,c:fc});
+      tA.push(t.a); tB.push(t.b); tC.push(t.c);
+      fA.push(f.a); fB.push(f.b); fC.push(f.c);
+    }
   }
 
-  // Calculate averages
+  const n = tA.length;
+  if (!n) {
+    leadEl.textContent = "⚠️ No valid rows after parsing numbers.";
+    return;
+  }
+
+  // 5) Averages
   const avgToday  = { a: mean(tA), b: mean(tB), c: mean(tC) };
   const avgFuture = { a: mean(fA), b: mean(fB), c: mean(fC) };
 
-  // Plotly chart
+  // 6) Plot
   const traces = [
-    {
-      type: 'scatterternary',
-      mode: 'markers',
-      name: 'Today (2025) — individuals',
-      a: tA, b: tB, c: tC,
-      marker: { size: 6, color: '#6ee7ff', opacity: 0.35 },
-      hoverinfo: 'none'
-    },
-    {
-      type: 'scatterternary',
-      mode: 'markers',
-      name: 'Future (2075) — individuals',
-      a: fA, b: fB, c: fC,
-      marker: { size: 6, color: '#a78bfa', opacity: 0.35 },
-      hoverinfo: 'none'
-    },
-    {
-      type: 'scatterternary',
-      mode: 'markers+text',
-      name: 'Averages',
-      a: [avgToday.a, avgFuture.a],
-      b: [avgToday.b, avgFuture.b],
-      c: [avgToday.c, avgFuture.c],
-      text: ['Today (2025)', 'Future (2075)'],
-      textposition: 'top center',
-      marker: { size: 12, color: ['#6ee7ff', '#a78bfa'], line: { color: '#fff', width: 2 } }
-    }
+    { type:'scatterternary', mode:'markers', name:'Today (2025) — individuals',
+      a:tA, b:tB, c:tC, marker:{ size:6, color:'#6ee7ff', opacity:0.35 }, hoverinfo:'none' },
+    { type:'scatterternary', mode:'markers', name:'Future (2075) — individuals',
+      a:fA, b:fB, c:fC, marker:{ size:6, color:'#a78bfa', opacity:0.35 }, hoverinfo:'none' },
+    { type:'scatterternary', mode:'markers+text', name:'Averages',
+      a:[avgToday.a, avgFuture.a], b:[avgToday.b, avgFuture.b], c:[avgToday.c, avgFuture.c],
+      text:['Today (2025)','Future (2075)'], textposition:'top center',
+      marker:{ size:12, color:['#6ee7ff','#a78bfa'], line:{ color:'#fff', width:2 } } }
   ];
 
   const layout = {
-    title: 'Balance of Autonomy, Knowledge Integrity, and Equ
+    title: 'Balance of Autonomy, Knowledge Integrity, and Equality',
+    ternary: { sum: 1, aaxis:{ title:'Autonomy' }, baxis:{ title:'Equality' }, caxis:{ title:'Knowledge Integrity' } },
+    paper_bgcolor:'rgba(0,0,0,0)',
+    plot_bgcolor:'rgba(0,0,0,0)',
+    font:{ color:'#e9edf7' },
+    legend:{ orientation:'h', x:0.25, y:-0.15 }
+  };
+
+  Plotly.newPlot('aggregate-plot', traces, layout, { responsive:true });
+  leadEl.textContent = `Based on ${n} valid responses`;
+})();
+</script>
+</body>
+</html>
