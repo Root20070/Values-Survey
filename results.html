@@ -1,13 +1,29 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Results | Root Values Survey</title>
 
+  <!-- Optional: your stylesheet; remove if you don't use one -->
   <link rel="stylesheet" href="styles.css" />
+
+  <!-- Plotly + PapaParse -->
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <style>
+    /* Nice defaults if you don’t have styles.css */
+    :root { color-scheme: dark; }
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#0b1220; color:#e6edf3; }
+    .container { max-width: 1000px; margin: 32px auto; padding: 0 16px; }
+    .topnav a { color:#9ecbff; text-decoration:none; }
+    .hero h1 { margin: 8px 0 0; font-size: 40px; }
+    .lead { margin: 8px 0 0; color:#a7b3c7; }
+    .card { background: #0f1629; border: 1px solid #1f2a44; border-radius: 16px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.25); margin-top: 20px; }
+    footer { opacity:.8; margin: 32px 0 0; font-size: .9rem; }
+    #diag { font-size:.95rem; color:#94a3b8; margin-top: 6px; white-space: pre-wrap; }
+  </style>
 </head>
 <body>
   <div class="container">
@@ -16,11 +32,11 @@
     <div class="hero">
       <h1>Results — Root Values Survey</h1>
       <p class="lead" id="lead">Loading results…</p>
-      <p class="lead" id="diag" style="font-size:.95rem; color:#94a3b8;"></p>
+      <p class="lead" id="diag"></p>
     </div>
 
     <div class="card">
-      <div id="aggregate-plot" style="height:520px;"></div>
+      <div id="aggregate-plot" style="height:520px"></div>
     </div>
 
     <footer>
@@ -30,62 +46,75 @@
 
 <script>
 (async () => {
- const ENDPOINT_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSjfZcJk_DpHaI3vcRK4czAhG8KvvBzGvX0F1yNPnqWPymSzqt7w3TrPD5ry212dXO--bMjIgSonHW/pub?gid=0&single=true&output=csv';
+  // ✅ Your published-to-web CSV URL (leave exactly as-is)
+  const DATA_URL =
+    'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSjfZcJk_DpHaI3vcRK4czAhG8KvvBzGvX0F1yNPnqWPymSzqt7w3TrPD5ry212dXO--bMjIgSonHW/pub?gid=0&single=true&output=csv';
 
   const leadEl = document.getElementById('lead');
   const diagEl = document.getElementById('diag');
 
-  const mean = a => a.reduce((x,y)=>x+y,0)/a.length;
-  const normalise = ({a,b,c}) => {
-    const s = (a||0)+(b||0)+(c||0);
-    return s>0 ? {a:(a||0)/s, b:(b||0)/s, c:(c||0)/s} : {a:0,b:0,c:0};
-  };
+  // Helpers
+  const mean = a => a.length ? a.reduce((x,y)=>x+y,0)/a.length : 0;
+
+  // If values are 0–100, normalise to 0–1; always re-normalise to sum==1
+  function toTernaryTriple(a,b,c){
+    let A=+a||0, B=+b||0, C=+c||0;
+    const s = A+B+C;
+    if (s === 0) return {a:0,b:0,c:0};
+    // If looks like percents, scale to fractions
+    if (s > 1.5) { A/=100; B/=100; C/=100; }
+    const t = A+B+C;
+    return { a: A/t, b: B/t, c: C/t };
+  }
+
+  function randomSampleIndices(n, k){
+    // sample without replacement of up to k indices from [0..n-1]
+    const idx = Array.from({length:n}, (_,i)=>i);
+    for (let i=idx.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [idx[i], idx[j]] = [idx[j], idx[i]];
+    }
+    return idx.slice(0, Math.min(k, n));
+  }
 
   // 1) Fetch CSV
-  let csvText = "";
+  let csvText = '';
   try {
-    const res = await fetch(ENDPOINT_URL, { cache: "no-store" });
+    const res = await fetch(DATA_URL, { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP '+res.status);
     csvText = await res.text();
-  } catch (e) {
-    console.error(e);
-    leadEl.textContent = "⚠️ Could not load data (network).";
+    diagEl.textContent = 'Fetching: ' + DATA_URL;
+  } catch (err) {
+    leadEl.textContent = '⚠️ Could not load data: ' + (err.message || err);
     return;
   }
 
   // 2) Parse CSV
   const parsed = Papa.parse(csvText, { header: true, dynamicTyping: true, skipEmptyLines: true });
   const fields = parsed.meta.fields || [];
+  const rows = parsed.data || [];
 
-  // 3) Build a header map that ignores punctuation/spaces/# etc.
-  const normKey = k => String(k)
-      .toLowerCase()
-      .normalize('NFKD')
-      .replace(/[#\s\-\.\(\)]/g, '')   // remove common stray symbols
-      .replace(/[^a-z0-9_]/g, '');     // keep only safe chars
+  // Expected exact headers
+  const need = ['today_a','today_b','today_c','y2075_a','y2075_b','y2075_c'];
 
-  const map = {};   // normalised -> original header
-  fields.forEach(f => { map[normKey(f)] = f; });
-
-  // expected keys after normalisation
-  const need = {
-    today_a:  map['todaya']   || map['today_a'],
-    today_b:  map['todayb']   || map['today_b'],
-    today_c:  map['todayc']   || map['today_c'],
-    y2075_a:  map['y2075a']   || map['futurea']   || map['y2075_a'],
-    y2075_b:  map['y2075b']   || map['futureb']   || map['y2075_b'],
-    y2075_c:  map['y2075c']   || map['futurec']   || map['y2075_c'],
+  // We also allow forgiving matches by stripping spaces/#/dashes
+  const norm = k => String(k).toLowerCase().replace(/[#\s\-\.\(\)]/g,'');
+  const byNorm = Object.fromEntries(fields.map(f => [norm(f), f]));
+  const headerMap = {
+    today_a: byNorm['todaya'] || 'today_a',
+    today_b: byNorm['todayb'] || 'today_b',
+    today_c: byNorm['todayc'] || 'today_c',
+    y2075_a: byNorm['y2075a'] || 'y2075_a',
+    y2075_b: byNorm['y2075b'] || 'y2075_b',
+    y2075_c: byNorm['y2075c'] || 'y2075_c',
   };
 
-  const missing = Object.entries(need)
-    .filter(([,orig]) => !orig)
-    .map(([k]) => k);
+  const missing = need.filter(k => !fields.includes(headerMap[k]));
+  diagEl.textContent += '\nDetected columns: ' + (fields.join(' · ') || '— none —')
+    + (missing.length ? '\nMissing: ' + missing.join(', ') : '');
 
-  // Show what we detected (helps debugging if anything is missing)
-  diagEl.textContent = `Detected columns: ${fields.join(' · ')}` + (missing.length ? ` — Missing: ${missing.join(', ')}` : '');
-
-  if (missing.length) {
-    leadEl.textContent = "⚠️ Column names not recognised. Please keep headers like: today_a, today_b, today_c, y2075_a, y2075_b, y2075_c.";
-    // Draw an empty ternary frame so the page still looks tidy
+  if (missing.length){
+    leadEl.textContent = '⚠️ Column names not recognised. Expected: ' + need.join(', ');
     Plotly.newPlot('aggregate-plot', [], {
       ternary:{ sum:1, aaxis:{title:'Autonomy'}, baxis:{title:'Equality'}, caxis:{title:'Knowledge Integrity'} },
       paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:'#e9edf7'}
@@ -93,24 +122,31 @@
     return;
   }
 
-  // 4) Extract & normalise rows
+  // 3) Build arrays
   const tA=[], tB=[], tC=[], fA=[], fB=[], fC=[];
-  for (const row of parsed.data) {
-    const ta = +row[need.today_a], tb = +row[need.today_b], tc = +row[need.today_c];
-    const fa = +row[need.y2075_a], fb = +row[need.y2075_b], fc = +row[need.y2075_c];
-    if ([ta,tb,tc,fa,fb,fc].every(Number.isFinite)) {
-      const t = normalise({a:ta,b:tb,c:tc});
-      const f = normalise({a:fa,b:fb,c:fc});
+  for (const r of rows){
+    const t = toTernaryTriple(r[headerMap.today_a], r[headerMap.today_b], r[headerMap.today_c]);
+    const f = toTernaryTriple(r[headerMap.y2075_a], r[headerMap.y2075_b], r[headerMap.y2075_c]);
+    if (Number.isFinite(t.a) && Number.isFinite(t.b) && Number.isFinite(t.c) &&
+        Number.isFinite(f.a) && Number.isFinite(f.b) && Number.isFinite(f.c)){
       tA.push(t.a); tB.push(t.b); tC.push(t.c);
       fA.push(f.a); fB.push(f.b); fC.push(f.c);
     }
   }
 
-  const n = tA.length;
-  if (!n) {
-    leadEl.textContent = "⚠️ No valid rows after parsing numbers.";
+  if (!tA.length){
+    leadEl.textContent = '⚠️ No valid rows after parsing numbers.';
     return;
   }
+
+  // 4) Limit to ~50 dots (sample without replacement)
+  const LIMIT = 50;
+  const idxT = randomSampleIndices(tA.length, LIMIT);
+  const idxF = randomSampleIndices(fA.length, LIMIT);
+
+  const pick = (arr, idxs) => idxs.map(i => arr[i]);
+  const tA50 = pick(tA, idxT), tB50 = pick(tB, idxT), tC50 = pick(tC, idxT);
+  const fA50 = pick(fA, idxF), fB50 = pick(fB, idxF), fC50 = pick(fC, idxF);
 
   // 5) Averages
   const avgToday  = { a: mean(tA), b: mean(tB), c: mean(tC) };
@@ -119,13 +155,13 @@
   // 6) Plot
   const traces = [
     { type:'scatterternary', mode:'markers', name:'Today (2025) — individuals',
-      a:tA, b:tB, c:tC, marker:{ size:6, color:'#6ee7ff', opacity:0.35 }, hoverinfo:'none' },
+      a:tA50, b:tB50, c:tC50, marker:{ size:7, opacity:0.32 }, hoverinfo:'none' },
     { type:'scatterternary', mode:'markers', name:'Future (2075) — individuals',
-      a:fA, b:fB, c:fC, marker:{ size:6, color:'#a78bfa', opacity:0.35 }, hoverinfo:'none' },
+      a:fA50, b:fB50, c:fC50, marker:{ size:7, opacity:0.32 }, hoverinfo:'none' },
     { type:'scatterternary', mode:'markers+text', name:'Averages',
       a:[avgToday.a, avgFuture.a], b:[avgToday.b, avgFuture.b], c:[avgToday.c, avgFuture.c],
       text:['Today (2025)','Future (2075)'], textposition:'top center',
-      marker:{ size:12, color:['#6ee7ff','#a78bfa'], line:{ color:'#fff', width:2 } } }
+      marker:{ size:12, symbol:'star', line:{ width:2 } } }
   ];
 
   const layout = {
@@ -133,12 +169,12 @@
     ternary: { sum: 1, aaxis:{ title:'Autonomy' }, baxis:{ title:'Equality' }, caxis:{ title:'Knowledge Integrity' } },
     paper_bgcolor:'rgba(0,0,0,0)',
     plot_bgcolor:'rgba(0,0,0,0)',
-    font:{ color:'#e9edf7' },
+    font:{ color:'#e6edf3' },
     legend:{ orientation:'h', x:0.25, y:-0.15 }
   };
 
   Plotly.newPlot('aggregate-plot', traces, layout, { responsive:true });
-  leadEl.textContent = `Based on ${n} valid responses`;
+  leadEl.textContent = `Based on ${tA.length} valid responses (showing ${tA50.length} samples per group)`;
 })();
 </script>
 </body>
