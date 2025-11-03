@@ -158,10 +158,51 @@
       a:tA50, b:tB50, c:tC50, marker:{ size:7, opacity:0.32 }, hoverinfo:'none' },
     { type:'scatterternary', mode:'markers', name:'Future (2075) — individuals',
       a:fA50, b:fB50, c:fC50, marker:{ size:7, opacity:0.32 }, hoverinfo:'none' },
-    { type:'scatterternary', mode:'markers+text', name:'Averages',
-      a:[avgToday.a, avgFuture.a], b:[avgToday.b, avgFuture.b], c:[avgToday.c, avgFuture.c],
-      text:['Today (2025)','Future (2075)'], textposition:'top center',
-      marker:{ size:12, symbol:'star', line:{ width:2 } } }
+ // Separate average markers for clarity
+const avg2025 = {
+  type: 'scatterternary',
+  mode: 'markers+text',
+  name: 'Average (2025)',
+  a: [avgToday.a],
+  b: [avgToday.b],
+  c: [avgToday.c],
+  text: ['Today (2025)'],
+  textposition: 'top center',
+  marker: {
+    size: 16,
+    symbol: 'star',
+    color: '#22d3ee', // bright teal
+    line: { color: '#ffffff', width: 2 }
+  }
+};
+
+const avg2075 = {
+  type: 'scatterternary',
+  mode: 'markers+text',
+  name: 'Average (2075)',
+  a: [avgFuture.a],
+  b: [avgFuture.b],
+  c: [avgFuture.c],
+  text: ['Future (2075)'],
+  textposition: 'top center',
+  marker: {
+    size: 16,
+    symbol: 'star-diamond',
+    color: '#c084fc', // purple
+    line: { color: '#ffffff', width: 2 }
+  }
+};
+
+// Final traces array includes both new averages
+const traces = [
+  { type:'scatterternary', mode:'markers', name:'Today (2025) — individuals',
+    a:tA50, b:tB50, c:tC50, marker:{ size:7, opacity:0.32 }, hoverinfo:'none' },
+  { type:'scatterternary', mode:'markers', name:'Future (2075) — individuals',
+    a:fA50, b:fB50, c:fC50, marker:{ size:7, opacity:0.32 }, hoverinfo:'none' },
+  avg2025,
+  avg2075
+];
+
   ];
 
   const layout = {
