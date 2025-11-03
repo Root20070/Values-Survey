@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Results | Root Values Survey</title>
 
-  <!-- Optional: your stylesheet; remove if you don't use one -->
   <link rel="stylesheet" href="styles.css" />
 
   <!-- Plotly + PapaParse -->
@@ -13,7 +12,6 @@
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
   <style>
-    /* Nice defaults if you don’t have styles.css */
     :root { color-scheme: dark; }
     body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#0b1220; color:#e6edf3; }
     .container { max-width: 1000px; margin: 32px auto; padding: 0 16px; }
@@ -25,6 +23,7 @@
     #diag { font-size:.95rem; color:#94a3b8; margin-top: 6px; white-space: pre-wrap; }
   </style>
 </head>
+
 <body>
   <div class="container">
     <p class="topnav"><a href="index.html">← Back to Home</a></p>
@@ -46,29 +45,25 @@
 
 <script>
 (async () => {
-  // ✅ Your published-to-web CSV URL (leave exactly as-is)
+  // ✅ Your published-to-web CSV URL
   const DATA_URL =
     'https://docs.google.com/spreadsheets/d/e/2PACX-1vQSjfZcJk_DpHaI3vcRK4czAhG8KvvBzGvX0F1yNPnqWPymSzqt7w3TrPD5ry212dXO--bMjIgSonHW/pub?gid=0&single=true&output=csv';
 
   const leadEl = document.getElementById('lead');
   const diagEl = document.getElementById('diag');
 
-  // Helpers
   const mean = a => a.length ? a.reduce((x,y)=>x+y,0)/a.length : 0;
 
-  // If values are 0–100, normalise to 0–1; always re-normalise to sum==1
   function toTernaryTriple(a,b,c){
     let A=+a||0, B=+b||0, C=+c||0;
     const s = A+B+C;
     if (s === 0) return {a:0,b:0,c:0};
-    // If looks like percents, scale to fractions
     if (s > 1.5) { A/=100; B/=100; C/=100; }
     const t = A+B+C;
     return { a: A/t, b: B/t, c: C/t };
   }
 
   function randomSampleIndices(n, k){
-    // sample without replacement of up to k indices from [0..n-1]
     const idx = Array.from({length:n}, (_,i)=>i);
     for (let i=idx.length-1;i>0;i--){
       const j = Math.floor(Math.random()*(i+1));
@@ -94,10 +89,7 @@
   const fields = parsed.meta.fields || [];
   const rows = parsed.data || [];
 
-  // Expected exact headers
   const need = ['today_a','today_b','today_c','y2075_a','y2075_b','y2075_c'];
-
-  // We also allow forgiving matches by stripping spaces/#/dashes
   const norm = k => String(k).toLowerCase().replace(/[#\s\-\.\(\)]/g,'');
   const byNorm = Object.fromEntries(fields.map(f => [norm(f), f]));
   const headerMap = {
@@ -139,11 +131,10 @@
     return;
   }
 
-  // 4) Limit to ~50 dots (sample without replacement)
+  // 4) Limit to ~50 dots
   const LIMIT = 50;
   const idxT = randomSampleIndices(tA.length, LIMIT);
   const idxF = randomSampleIndices(fA.length, LIMIT);
-
   const pick = (arr, idxs) => idxs.map(i => arr[i]);
   const tA50 = pick(tA, idxT), tB50 = pick(tB, idxT), tC50 = pick(tC, idxT);
   const fA50 = pick(fA, idxF), fB50 = pick(fB, idxF), fC50 = pick(fC, idxF);
@@ -152,57 +143,33 @@
   const avgToday  = { a: mean(tA), b: mean(tB), c: mean(tC) };
   const avgFuture = { a: mean(fA), b: mean(fB), c: mean(fC) };
 
-  // 6) Plot
+  // 6) Separate average markers for clarity
+  const avg2025 = {
+    type: 'scatterternary',
+    mode: 'markers+text',
+    name: 'Average (2025)',
+    a: [avgToday.a], b: [avgToday.b], c: [avgToday.c],
+    text: ['Today (2025)'], textposition: 'top center',
+    marker: { size: 16, symbol: 'star', color: '#22d3ee', line: { color: '#ffffff', width: 2 } }
+  };
+
+  const avg2075 = {
+    type: 'scatterternary',
+    mode: 'markers+text',
+    name: 'Average (2075)',
+    a: [avgFuture.a], b: [avgFuture.b], c: [avgFuture.c],
+    text: ['Future (2075)'], textposition: 'top center',
+    marker: { size: 16, symbol: 'star-diamond', color: '#c084fc', line: { color: '#ffffff', width: 2 } }
+  };
+
+  // 7) Plot all traces
   const traces = [
     { type:'scatterternary', mode:'markers', name:'Today (2025) — individuals',
       a:tA50, b:tB50, c:tC50, marker:{ size:7, opacity:0.32 }, hoverinfo:'none' },
     { type:'scatterternary', mode:'markers', name:'Future (2075) — individuals',
       a:fA50, b:fB50, c:fC50, marker:{ size:7, opacity:0.32 }, hoverinfo:'none' },
- // Separate average markers for clarity
-const avg2025 = {
-  type: 'scatterternary',
-  mode: 'markers+text',
-  name: 'Average (2025)',
-  a: [avgToday.a],
-  b: [avgToday.b],
-  c: [avgToday.c],
-  text: ['Today (2025)'],
-  textposition: 'top center',
-  marker: {
-    size: 16,
-    symbol: 'star',
-    color: '#22d3ee', // bright teal
-    line: { color: '#ffffff', width: 2 }
-  }
-};
-
-const avg2075 = {
-  type: 'scatterternary',
-  mode: 'markers+text',
-  name: 'Average (2075)',
-  a: [avgFuture.a],
-  b: [avgFuture.b],
-  c: [avgFuture.c],
-  text: ['Future (2075)'],
-  textposition: 'top center',
-  marker: {
-    size: 16,
-    symbol: 'star-diamond',
-    color: '#c084fc', // purple
-    line: { color: '#ffffff', width: 2 }
-  }
-};
-
-// Final traces array includes both new averages
-const traces = [
-  { type:'scatterternary', mode:'markers', name:'Today (2025) — individuals',
-    a:tA50, b:tB50, c:tC50, marker:{ size:7, opacity:0.32 }, hoverinfo:'none' },
-  { type:'scatterternary', mode:'markers', name:'Future (2075) — individuals',
-    a:fA50, b:fB50, c:fC50, marker:{ size:7, opacity:0.32 }, hoverinfo:'none' },
-  avg2025,
-  avg2075
-];
-
+    avg2025,
+    avg2075
   ];
 
   const layout = {
